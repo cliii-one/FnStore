@@ -61,6 +61,7 @@ jobs:
 
       - name: 下载后端 bundle
         run: |
+          mkdir -p app/server
           curl -fsSL -o app/server/sub-store.min.js "https://github.com/sub-store-org/Sub-Store/releases/latest/download/sub-store.bundle.js"
           echo "✅ 后端 bundle: $(du -h app/server/sub-store.min.js | cut -f1)"
 
