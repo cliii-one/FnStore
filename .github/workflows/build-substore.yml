@@ -79,6 +79,7 @@ jobs:
           npm install -g pnpm && corepack enable && corepack prepare pnpm@latest --activate
           pnpm i --no-frozen-lockfile
           pnpm build
+          mkdir -p $GITHUB_WORKSPACE/SubStore/app/www
           cp -r dist/* $GITHUB_WORKSPACE/SubStore/app/www/
           echo "✅ 前端构建完成"
 
