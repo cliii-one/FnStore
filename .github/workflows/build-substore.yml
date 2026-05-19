@@ -52,6 +52,11 @@ jobs:
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "版本号: $VERSION"
 
+      - name: 配置 Node.js 构建环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
       - name: 获取后端版本号
         id: backend_ver
         env:
@@ -83,11 +88,6 @@ jobs:
           VER=$(node --eval="process.stdout.write(require('/tmp/sub-store-frontend/package.json').version)")
           echo "version=$VER" >> $GITHUB_OUTPUT
           echo "📦 前端版本: v${VER}"
-
-      - name: 配置 Node.js 并下载运行时
-        uses: actions/setup-node@v4
-        with:
-          node-version: '24'
 
       - name: 下载 Node.js 运行时
         run: |
