@@ -83,8 +83,7 @@ start_process() {
     # 切换到 server 目录（Sub-Store 需要在此目录下运行）
     cd "${TRIM_APPDEST}/server"
 
-    # 以 nohup 方式后台启动 Node.js 进程
-    nohup "${NODE_BIN}" \
+    exec -a "SubStore" "${NODE_BIN}" \
         "${SUBSTORE_JS}" \
         >> "${LOG_FILE}" 2>&1 &
 
