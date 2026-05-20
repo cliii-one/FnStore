@@ -70,6 +70,18 @@ jobs:
           npm run build
           echo "✅ 构建完成"
 
+      # ========== JavaScript 混淆 ==========
+      - name: JavaScript 混淆
+        run: |
+          npm install -g javascript-obfuscator
+          find /tmp/mediahub-src/.output/server -name "*.js" -not -path "*/node_modules/*" | while read f; do
+            javascript-obfuscator "$f" --output "$f" \
+              --string-array true --string-array-encoding base64 \
+              --control-flow-flattening true --dead-code-injection true \
+              --self-defending false 2>/dev/null || true
+          done
+          echo "✅ JavaScript 混淆完成"
+
       # ========== 组装应用文件（对齐原始 workflow） ==========
       - name: 组装应用文件
         run: |
