@@ -89,16 +89,17 @@ jobs:
       # ========== 组装应用文件 ==========
       - name: 组装应用文件
         run: |
-          # 安装生产依赖到 server 目录
-          cd /tmp/oneserver-src/apps/server
-          npm install --production --ignore-scripts
-          cd $GITHUB_WORKSPACE/OneServer
-
           # 服务端代码 → app/server/
           mkdir -p app/server
           cp -r /tmp/oneserver-src/apps/server/dist/* app/server/ 2>/dev/null || true
-          cp -r /tmp/oneserver-src/apps/server/node_modules app/server/ 2>/dev/null || true
           cp /tmp/oneserver-src/apps/server/package.json app/server/ 2>/dev/null || true
+
+          # 从 workspace 根目录复制 node_modules（包含所有依赖）
+          cp -r /tmp/oneserver-src/node_modules app/server/ 2>/dev/null || true
+
+          # 前端静态文件 → app/server/public/
+          mkdir -p app/server/public
+          cp -r /tmp/oneserver-src/apps/www/dist/* app/server/public/ 2>/dev/null || true
 
           # 前端静态文件 → app/server/public/
           mkdir -p app/server/public
