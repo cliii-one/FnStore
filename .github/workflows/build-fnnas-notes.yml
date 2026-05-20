@@ -74,12 +74,25 @@ jobs:
           flutter build web --release
           echo "✅ Flutter Web 构建完成"
 
+      # ========== 配置 QEMU（ARM 交叉编译） ==========
+      - name: 配置 QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
       # ========== 编译 Python 后端为二进制 (Nuitka) ==========
       - name: 编译 Python 后端 (Nuitka)
         run: |
           cd /tmp/fnnas-notes-src/src/backend
           pip install nuitka cryptography ordered-set
+          # 目标平台架构
+          if [ "${{ matrix.arch }}" = "arm64" ]; then
+            TARGET_ARCH="--target=aarch64"
+          else
+            TARGET_ARCH=""
+          fi
           python -m nuitka --standalone --onefile \
+            ${TARGET_ARCH} \
             --include-package=handlers \
             --include-module=cryptography \
             --include-module=sqlite3 \
@@ -87,6 +100,7 @@ jobs:
             --output-dir=/tmp/nuitka-out \
             server.py
           echo "✅ Python 后端编译完成"
+          file /tmp/nuitka-out/server 2>/dev/null || true
           ls -lh /tmp/nuitka-out/server
 
       # ========== 组装应用文件 ==========
