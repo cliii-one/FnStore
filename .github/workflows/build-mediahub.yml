@@ -116,7 +116,7 @@ jobs:
       - name: 清理 BOM
         run: |
           find . -maxdepth 3 -type f \( -name "*.json" -o -name "config" -o -name "manifest" -o -name "privilege" -o -name "resource" -o -name "install" -o -name "uninstall" \) | while read f; do
-            xxd "$f" 2>/dev/null | head -1 | grep -q "efbb bf" && tail -c +4 "$f" > "${f}.tmp" && mv "${f}.tmp" "$f"
+            xxd "$f" 2>/dev/null | head -1 | grep -q "efbb bf" && tail -c +4 "$f" > "${f}.tmp" && mv "${f}.tmp" "$f" || true
           done
 
       # ========== 打包 FPK ==========
