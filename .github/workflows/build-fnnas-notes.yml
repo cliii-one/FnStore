@@ -71,7 +71,7 @@ jobs:
         run: |
           cd /tmp/fnnas-notes-src/src/frontend
           flutter pub get
-          flutter build web --release --web-renderer canvaskit
+          flutter build web --release
           echo "✅ Flutter Web 构建完成"
 
       # ========== 编译 Python 后端为二进制 ==========
