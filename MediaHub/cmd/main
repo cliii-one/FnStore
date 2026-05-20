@@ -19,11 +19,14 @@ write_user_error() {
 }
 
 resolve_app_entry() {
+    if [ -f "${APP_ROOT}/server/dist/index.mjs" ]; then
+        APP_ENTRY="${APP_ROOT}/server/dist/index.mjs"
+        return 0
+    fi
     if [ -f "${APP_ROOT}/server/dist/index.js" ]; then
         APP_ENTRY="${APP_ROOT}/server/dist/index.js"
         return 0
     fi
-
     return 1
 }
 

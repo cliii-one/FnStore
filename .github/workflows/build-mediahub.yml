@@ -87,12 +87,14 @@ jobs:
       # ========== 组装应用文件 ==========
       - name: 组装应用文件
         run: |
-          # 复制构建产物
-          mkdir -p app/www
-          cp -r /tmp/mediahub-src/.output/server app/www/
-          cp -r /tmp/mediahub-src/.output/public app/www/
+          # Nuxt Nitro 服务端 → app/server/dist/
+          mkdir -p app/server/dist
+          cp -r /tmp/mediahub-src/.output/server/* app/server/dist/
+          # 前端静态文件 → app/server/dist/public/
+          mkdir -p app/server/dist/public
+          cp -r /tmp/mediahub-src/.output/public/* app/server/dist/public/
 
-          # 下载 Node.js 运行时
+          # Node.js 运行时 → app/runtime/bin/node
           NODE_VER="24.15.0"
           mkdir -p app/runtime/bin
           curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-linux-${{ matrix.node_arch }}.tar.xz"

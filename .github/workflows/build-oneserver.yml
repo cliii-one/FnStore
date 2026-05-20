@@ -89,12 +89,16 @@ jobs:
       # ========== 组装应用文件 ==========
       - name: 组装应用文件
         run: |
-          # 复制构建产物
-          mkdir -p app/www
-          cp -r /tmp/oneserver-src/apps/server/dist/* app/www/ 2>/dev/null || true
-          cp -r /tmp/oneserver-src/apps/www/dist/* app/www/ 2>/dev/null || true
+          # 服务端代码 → app/server/
+          mkdir -p app/server
+          cp -r /tmp/oneserver-src/apps/server/dist/* app/server/ 2>/dev/null || true
+          cp -r /tmp/oneserver-src/apps/server/node_modules app/server/ 2>/dev/null || true
 
-          # 下载 Node.js 运行时
+          # 前端静态文件 → app/server/public/
+          mkdir -p app/server/public
+          cp -r /tmp/oneserver-src/apps/www/dist/* app/server/public/ 2>/dev/null || true
+
+          # Node.js 运行时 → app/runtime/bin/node
           NODE_VER="24.15.0"
           mkdir -p app/runtime/bin
           curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-linux-${{ matrix.node_arch }}.tar.xz"
