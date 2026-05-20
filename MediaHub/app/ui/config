@@ -1,6 +1,6 @@
 {
   ".url": {
-    "OneServer.Application": {
+    "mediahub.Application": {
       "noDisplay": false,
       "allUsers": true,
       "fileTypes": [],
@@ -8,10 +8,10 @@
         "accessPerm": "readonly"
       },
       "protocol": "",
-      "title": "One Server",
+      "title": "MediaHub",
       "icon": "images/icon_{0}.png",
       "type": "iframe",
-      "port": "4120",
+      "port": "3030",
       "url": "/"
     }
   }
