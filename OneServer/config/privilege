@@ -2,7 +2,5 @@
     "defaults":
     {
         "run-as": "package"
-    },
-    "username": "oneserver",
-    "groupname": "oneserver"
+    }
 }

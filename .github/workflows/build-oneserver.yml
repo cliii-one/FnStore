@@ -60,25 +60,21 @@ jobs:
         env:
           PRIVATE_TOKEN: ${{ secrets.PRIVATE_REPO_TOKEN }}
         run: |
-          git clone --depth=1 -b main https://x-access-token:${PRIVATE_TOKEN}@github.com/DinDing1/OneServer.git /tmp/oneserver-src
-          echo "✅ 源码克隆完成"
+          git clone --depth=1 https://x-access-token:${PRIVATE_TOKEN}@github.com/DinDing1/OneServer.git /tmp/oneserver-src
 
       # ========== 构建项目 ==========
       - name: 安装依赖并构建
         run: |
           cd /tmp/oneserver-src
-          npm install
+          npm ci
           npm run build
           echo "✅ 构建完成"
-          ls -la apps/server/dist/ 2>/dev/null || true
-          ls -la apps/www/dist/ 2>/dev/null || true
 
       # ========== JavaScript 混淆 ==========
       - name: JavaScript 混淆
         run: |
           npm install -g javascript-obfuscator
-          # 混淆服务端代码
-          find /tmp/oneserver-src/apps/server/dist -name "*.js" -not -path "*/node_modules/*" | while read f; do
+          find /tmp/oneserver-src/apps/server/dist -name "*.js" | while read f; do
             javascript-obfuscator "$f" --output "$f" \
               --string-array true --string-array-encoding base64 \
               --control-flow-flattening true --dead-code-injection true \
@@ -86,29 +82,41 @@ jobs:
           done
           echo "✅ JavaScript 混淆完成"
 
-      # ========== 组装应用文件 ==========
-      - name: 组装应用文件
+      # ========== 组装应用文件（对齐源仓库 workflow） ==========
+      - name: 复制服务端构建产物
         run: |
-          # 服务端代码 → app/server/
-          mkdir -p app/server
-          cp -r /tmp/oneserver-src/apps/server/dist/* app/server/ 2>/dev/null || true
-          cp /tmp/oneserver-src/apps/server/package.json app/server/ 2>/dev/null || true
-          cp -r /tmp/oneserver-src/shared app/server/shared 2>/dev/null || true
+          mkdir -p app/server/dist
+          cp -r /tmp/oneserver-src/apps/server/dist/* app/server/dist/
 
-          # 单独安装生产依赖（避免复制整个 workspace node_modules）
-          cd /tmp/oneserver-src
-          npm install --omit=dev --ignore-scripts --prefix /tmp/prod-deps 2>/dev/null || true
-          cp -r /tmp/prod-deps/node_modules app/server/ 2>/dev/null || true
+      - name: 生成服务端运行时 package.json
+        run: |
+          node -e "
+          const fs = require('fs');
+          const source = JSON.parse(fs.readFileSync('/tmp/oneserver-src/apps/server/package.json', 'utf8'));
+          const runtime = {
+            name: 'one-server-runtime',
+            private: true,
+            type: 'module',
+            main: 'dist/index.js',
+            dependencies: Object.fromEntries(
+              Object.entries(source.dependencies || {}).filter(([n]) => n !== '@one-server/shared')
+            )
+          };
+          fs.writeFileSync('app/server/package.json', JSON.stringify(runtime, null, 2) + '\n');
+          "
 
-          # 前端静态文件 → app/server/public/
-          mkdir -p app/server/public
-          cp -r /tmp/oneserver-src/apps/www/dist/* app/server/public/ 2>/dev/null || true
+      - name: 安装服务端运行时依赖
+        run: |
+          npm install --omit=dev --no-bin-links --prefix app/server
+          rm -rf app/server/node_modules/.bin
 
-          # 前端静态文件 → app/server/public/
-          mkdir -p app/server/public
-          cp -r /tmp/oneserver-src/apps/www/dist/* app/server/public/ 2>/dev/null || true
+      - name: 复制前端构建产物
+        run: |
+          mkdir -p app/www/dist
+          cp -r /tmp/oneserver-src/apps/www/dist/* app/www/dist/
 
-          # Node.js 运行时 → app/runtime/bin/node
+      - name: 下载 Node.js 运行时
+        run: |
           NODE_VER="24.15.0"
           mkdir -p app/runtime/bin
           curl -fsSL -o /tmp/node.tar.xz "https://nodejs.org/dist/v${NODE_VER}/node-v${NODE_VER}-linux-${{ matrix.node_arch }}.tar.xz"
@@ -117,7 +125,6 @@ jobs:
           chmod +x app/runtime/bin/node
           strip app/runtime/bin/node 2>/dev/null || true
           rm -rf /tmp/_ne /tmp/node.tar.xz
-          echo "✅ 组装完成"
 
       - name: 更新 manifest
         run: |
@@ -127,12 +134,6 @@ jobs:
       - name: 修复脚本权限
         run: |
           for f in cmd/*; do [ -f "$f" ] && sed -i 's/\r$//' "$f" && chmod +x "$f"; done
-
-      - name: 清理 BOM
-        run: |
-          find . -maxdepth 3 -type f \( -name "*.json" -o -name "config" -o -name "manifest" -o -name "privilege" -o -name "resource" -o -name "install" -o -name "uninstall" \) | while read f; do
-            xxd "$f" 2>/dev/null | head -1 | grep -q "efbb bf" && tail -c +4 "$f" > "${f}.tmp" && mv "${f}.tmp" "$f" || true
-          done
 
       # ========== 打包 FPK ==========
       - name: 下载 fnpack 并打包
@@ -189,7 +190,7 @@ jobs:
           body: |
             ## OneServer v${{ steps.info.outputs.version }}
 
-            面向飞牛 NAS 的 MacOS 风格 SSH 终端管理工具。
+            面向飞牛 NAS 的 SSH 终端管理工具。
 
             | 文件 | 架构 |
             |------|------|

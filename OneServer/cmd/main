@@ -19,8 +19,8 @@ write_user_error() {
 }
 
 resolve_app_entry() {
-    if [ -f "${APP_ROOT}/server/index.js" ]; then
-        APP_ENTRY="${APP_ROOT}/server/index.js"
+    if [ -f "${APP_ROOT}/server/dist/index.js" ]; then
+        APP_ENTRY="${APP_ROOT}/server/dist/index.js"
         return 0
     fi
     return 1
@@ -31,7 +31,6 @@ check_process() {
     if kill -0 "${pid}" 2>/dev/null; then
         return 0
     fi
-
     return 1
 }
 
@@ -43,7 +42,6 @@ status() {
         fi
         rm -f "${PID_FILE}"
     fi
-
     return 1
 }
 
@@ -57,7 +55,7 @@ start_process() {
     fi
 
     if ! resolve_app_entry; then
-        log_msg "Missing app entry: ${APP_ROOT}/server/index.js"
+        log_msg "Missing app entry: ${APP_ROOT}/server/dist/index.js"
         write_user_error "应用启动失败：未找到服务端入口文件。"
         return 1
     fi
