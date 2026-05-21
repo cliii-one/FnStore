@@ -55,7 +55,7 @@
       "x86",
       "arm"
     ],
-    "version": "1.1.0\r",
+    "version": "1.1.0",
     "desc": "一个同时适配桌面端、手机端、fnOS iframe的轻量SSH管理与终端应用；聚焦 好看、好用、好维护的NAS端SSH体验",
     "distributor": "cliii-one",
     "distributor_url": "https://github.com/cliii-one/FnDepot/tree/main/oneserver",
@@ -67,10 +67,10 @@
     "changelog": "添加了Sftp",
     "arch_diff": {
       "x86": {
-        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/oneserver-v1.1.0\r/oneserver-X86.fpk"
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/oneserver-v1.1.0/oneserver-X86.fpk"
       },
       "arm": {
-        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/oneserver-v1.1.0\r/oneserver-ARM.fpk"
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/oneserver-v1.1.0/oneserver-ARM.fpk"
       }
     }
   },
