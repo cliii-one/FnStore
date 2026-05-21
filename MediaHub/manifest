@@ -1,5 +1,5 @@
 appname=mediahub
-version=1.0.9
+version=1.1.0
 display_name=MediaHub
 desc=媒体库管理工具，支持云盘自动整理、自动重命名、STRM文件生成、Emby 302反代、Telegram、Wechat通知等功能
 platform=all
