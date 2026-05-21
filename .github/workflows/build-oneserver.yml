@@ -221,6 +221,7 @@ jobs:
         run: |
           git pull origin main
           python3 scripts/update-fnpack.py oneserver "${{ steps.info.outputs.tag }}" "${{ github.repository }}"
+          git diff --quiet fnpack.json && echo "fnpack.json 无变更" && exit 0
           git add fnpack.json
           git commit -m "docs: 更新 OneServer 版本信息到 fnpack.json"
           git push
