@@ -1,8 +1,15 @@
 name: 更新 README 编译时间
 
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows:
+      - 构建 ClashLite
+      - 构建 SubStore
+      - 构建 fnnas-notes
+      - 构建 MediaHub
+      - 构建 OneServer
+    types: [completed]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -11,6 +18,7 @@ permissions:
 jobs:
   update-readme:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: 检出代码
         uses: actions/checkout@v4
