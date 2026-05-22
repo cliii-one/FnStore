@@ -14,7 +14,7 @@ desc="""
 🔒 <b>隐私安全</b> — AES-256-GCM 内容加密与密码校验，敏感信息仅你可见<br/>
 📦 <b>数据迁移</b> — 导入导出自如，数据备份与恢复，所有权始终归你<br/>
 💾 <b>本地存储</b> — 基于 SQLite，数据默认不上传外部服务器，守护隐私<br/>
-<img width="100%" height="auto" src="https://raw.githubusercontent.com/cliii-one/FnStore/master/fnnas-notes/doc/fnnas-notes.png" alt="贴贴密笺截图" style="margin-top:0.3em;">
+<img width="100%" height="auto" src="https://raw.githubusercontent.com/cliii-one/FnDepot/main/fnnas-notes/doc/fnnas-notes.png" alt="贴贴密笺截图" style="margin-top:0.3em;">
 """
 platform=all
 source=thirdparty
