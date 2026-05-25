@@ -123,5 +123,30 @@
         "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlite-v2.0.0/clashlite-ARM.fpk"
       }
     }
+  },
+  "clashlitepro": {
+    "display_name": "ClashLite Pro",
+    "platform": [
+      "x86",
+      "arm"
+    ],
+    "version": "1.0.0",
+    "desc": "基于 vernesong/mihomo 内核的代理管理面板 Pro 版，mihomo 原生 Unix Socket 监听，零 TCP 端口暴露",
+    "distributor": "cliii-one",
+    "distributor_url": "https://github.com/cliii-one/FnDepot/tree/main/clashlitepro",
+    "bug_report_url": "https://github.com/cliii-one/FnDepot/issues",
+    "labels": "工具,效率",
+    "isdocker": "false",
+    "size": "40",
+    "install_type": "存储空间",
+    "changelog": "v1.0.0 Pro 版首发：mihomo 原生 Unix Socket 监听，零 TCP 端口暴露",
+    "arch_diff": {
+      "x86": {
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlitepro-v1.0.0/clashlitepro-X86.fpk"
+      },
+      "arm": {
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlitepro-v1.0.0/clashlitepro-ARM.fpk"
+      }
+    }
   }
 }
