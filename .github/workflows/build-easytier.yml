@@ -77,8 +77,8 @@ jobs:
       - name: 下载 EasyTier 二进制
         run: |
           EASYTIER_TAG="${{ steps.easytier.outputs.tag }}"
-          PATTERN="easytier-linux-${{ matrix.easytier_arch }}-"
-          DOWNLOAD_URL="https://github.com/${{ env.EASYTIER_REPO }}/releases/download/${EASYTIER_TAG}/${PATTERN}${EASYTIER_TAG#v}.zip"
+          FILENAME="easytier-linux-${{ matrix.easytier_arch }}-${EASYTIER_TAG}.zip"
+          DOWNLOAD_URL="https://github.com/${{ env.EASYTIER_REPO }}/releases/download/${EASYTIER_TAG}/${FILENAME}"
           echo "下载地址: $DOWNLOAD_URL"
 
           mkdir -p app/server/data/easytier
