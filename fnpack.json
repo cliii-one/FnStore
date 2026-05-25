@@ -148,5 +148,30 @@
         "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlitepro-v1.0.0/clashlitepro-ARM.fpk"
       }
     }
+  },
+  "easytier": {
+    "display_name": "EasyTier",
+    "platform": [
+      "x86",
+      "arm"
+    ],
+    "version": "1.0.0",
+    "desc": "基于 EasyTier 的去中心化 VPN 组网工具，支持 Web 控制台管理，P2P 打洞，零配置组网",
+    "distributor": "cliii-one",
+    "distributor_url": "https://github.com/cliii-one/FnDepot/tree/main/easytier",
+    "bug_report_url": "https://github.com/cliii-one/FnDepot/issues",
+    "labels": "工具,网络,VPN",
+    "isdocker": "false",
+    "size": "25",
+    "install_type": "存储空间",
+    "changelog": "v1.0.0 首次上线：去中心化 VPN 组网，Web 控制台管理",
+    "arch_diff": {
+      "x86": {
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/easytier-v1.0.0/easytier-X86.fpk"
+      },
+      "arm": {
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/easytier-v1.0.0/easytier-ARM.fpk"
+      }
+    }
   }
 }

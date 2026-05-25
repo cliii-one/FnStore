@@ -1,0 +1,12 @@
+{
+  "data-share": {
+    "shares": [
+      {
+        "name": "config",
+        "permission": {
+          "rw": ["root"]
+        }
+      }
+    ]
+  }
+}

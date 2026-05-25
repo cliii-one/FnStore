@@ -1,0 +1,9 @@
+#!/bin/bash
+
+DATA_ACTION="${wizard_data_action:-keep}"
+
+if [ "${DATA_ACTION}" = "delete" ]; then
+    rm -rf "${TRIM_PKGVAR}"/*
+fi
+
+exit 0

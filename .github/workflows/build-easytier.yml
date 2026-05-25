@@ -1,0 +1,228 @@
+name: 构建 EasyTier
+
+on:
+  push:
+    tags: ['easytier-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号（留空则读取 manifest 默认版本）'
+        required: false
+        default: ''
+      create_release:
+        description: '创建 GitHub Release'
+        required: false
+        default: 'true'
+        type: choice
+        options: ['true', 'false']
+      update_fnpack:
+        description: '更新 fnpack.json 版本信息'
+        required: false
+        default: 'false'
+        type: choice
+        options: ['true', 'false']
+
+env:
+  EASYTIER_REPO: EasyTier/EasyTier
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    name: 构建 ${{ matrix.arch }}
+    strategy:
+      matrix:
+        include:
+          - arch: x86_64
+            easytier_arch: x86_64
+            fnpack_platform: x86
+          - arch: arm64
+            easytier_arch: aarch64
+            fnpack_platform: arm
+    defaults:
+      run:
+        working-directory: easytier
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 确定版本号
+        id: version
+        run: |
+          MANIFEST_VER=$(grep '^version' manifest | awk -F'=' '{print $2}' | tr -d ' ')
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${{ github.ref }}" == refs/tags/easytier-v* ]]; then
+            VERSION="${{ github.ref_name }}"
+            VERSION="${VERSION#easytier-v}"
+          else
+            VERSION="${MANIFEST_VER}"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "版本号: $VERSION"
+
+      - name: 获取 EasyTier 最新版本
+        id: easytier
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          LATEST_TAG=$(curl -sL "https://api.github.com/repos/${{ env.EASYTIER_REPO }}/releases/latest" | python3 -c "
+          import json, sys
+          data = json.load(sys.stdin)
+          print(data['tag_name'])
+          ")
+          echo "tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+          echo "EasyTier 最新版本: $LATEST_TAG"
+
+      - name: 下载 EasyTier 二进制
+        run: |
+          EASYTIER_TAG="${{ steps.easytier.outputs.tag }}"
+          PATTERN="easytier-linux-${{ matrix.easytier_arch }}-"
+          DOWNLOAD_URL="https://github.com/${{ env.EASYTIER_REPO }}/releases/download/${EASYTIER_TAG}/${PATTERN}${EASYTIER_TAG#v}.zip"
+          echo "下载地址: $DOWNLOAD_URL"
+
+          mkdir -p app/server/data/easytier
+          curl -sL "$DOWNLOAD_URL" -o easytier.zip
+
+          TMP_DIR=$(mktemp -d)
+          unzip -q -o easytier.zip -d "$TMP_DIR"
+
+          cp "$TMP_DIR"/easytier-core app/server/data/easytier/ 2>/dev/null || true
+          cp "$TMP_DIR"/easytier-web-embed app/server/data/easytier/ 2>/dev/null || true
+          cp "$TMP_DIR"/easytier-cli app/server/data/easytier/ 2>/dev/null || true
+
+          chmod +x app/server/data/easytier/easytier-* 2>/dev/null || true
+          ls -lh app/server/data/easytier/
+          rm -rf "$TMP_DIR" easytier.zip
+
+      - name: 更新 manifest
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          PLATFORM="${{ matrix.fnpack_platform }}"
+          sed -i "s/^version.*/version = ${VERSION}/" manifest
+          sed -i "s/^platform.*/platform = ${PLATFORM}/" manifest
+          echo "=== manifest ===" && cat manifest
+
+      - name: 修复脚本权限
+        run: |
+          for f in cmd/main cmd/install_callback cmd/config_callback cmd/uninstall_callback; do
+            [ -f "$f" ] && sed -i 's/\r$//' "$f" && chmod +x "$f"
+          done
+
+      - name: 打包 FPK
+        run: |
+          python3 -c "
+          import tarfile, os
+          with tarfile.open('app.tgz', 'w:gz') as tar:
+              for root, dirs, files in os.walk('app'):
+                  for f in files:
+                      full = os.path.join(root, f)
+                      tar.add(full, arcname=os.path.relpath(full, 'app'))
+          "
+          tar -cf easytier.tar manifest ICON.PNG ICON_256.PNG cmd/ config/ wizard/ app.tgz
+          gzip -1 easytier.tar && rm -f app.tgz
+
+          if [ "${{ matrix.arch }}" = "x86_64" ]; then
+            mv easytier.tar.gz easytier-X86.fpk
+          else
+            mv easytier.tar.gz easytier-ARM.fpk
+          fi
+          echo "构建完成: $(ls -h *.fpk)"
+
+      - name: 上传构建产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: easytier-${{ matrix.arch }}
+          path: easytier/easytier-*.fpk
+          retention-days: 30
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/easytier-v') || github.event.inputs.create_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 下载所有 FPK
+        uses: actions/download-artifact@v4
+        with:
+          path: ./artifacts/
+
+      - name: 删除旧版本 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASES=$(gh release list --limit 100 --json tagName --jq '.[].tagName' 2>/dev/null || echo "")
+          echo "$RELEASES" | while read -r tag; do
+            case "$tag" in easytier-*) gh release delete "${tag}" --yes --cleanup-tag 2>/dev/null || true;; esac
+          done
+
+      - name: 确定构建信息
+        id: info
+        run: |
+          MANIFEST_VER=$(grep '^version' easytier/manifest | awk -F'=' '{print $2}' | tr -d ' ')
+          if [[ "${{ github.ref }}" == refs/tags/easytier-v* ]]; then
+            TAG="${{ github.ref_name }}" && VERSION="${TAG#easytier-v}"
+          elif [ -n "${{ github.event.inputs.version }}" ]; then
+            TAG="easytier-v${{ github.event.inputs.version }}" && VERSION="${{ github.event.inputs.version }}"
+          else
+            TAG="easytier-v${MANIFEST_VER}" && VERSION="${MANIFEST_VER}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "build_time=$(TZ=Asia/Shanghai date '+%Y-%m-%d %H:%M CST')" >> $GITHUB_OUTPUT
+
+      - name: 创建 Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.info.outputs.tag }}
+          name: "EasyTier ${{ steps.info.outputs.version }}"
+          files: ./artifacts/**/*.fpk
+          generate_release_notes: false
+          body: |
+            ## EasyTier v${{ steps.info.outputs.version }}
+
+            基于 EasyTier 的去中心化 VPN 组网工具，支持 Web 控制台管理。
+
+            ### 特性
+
+            - ✅ 去中心化 VPN 组网，P2P 打洞
+            - ✅ Web 控制台管理节点（端口 11211）
+            - ✅ 支持加密通信和延迟优先模式
+            - ✅ 兼容 x86_64 和 ARM64 架构
+
+            ### 📦 下载
+
+            | 文件 | 架构 | 适用设备 |
+            |------|------|----------|
+            | `easytier-X86.fpk` | x86_64 | Intel/AMD NAS |
+            | `easytier-ARM.fpk` | arm64 | ARM NAS |
+
+            ---
+            构建时间：${{ steps.info.outputs.build_time }}
+
+      - name: 更新 README 编译时间
+        run: |
+          git pull --rebase origin main
+          python3 scripts/update-readme-time.py easytier "${{ steps.info.outputs.build_time }}"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git diff --quiet README.md && echo "无变更" && exit 0
+          git add README.md
+          git commit -m "docs: 更新 EasyTier 编译时间"
+          git pull --rebase origin main
+          git push
+
+      - name: 更新 fnpack.json 版本信息
+        if: github.event.inputs.update_fnpack == 'true'
+        run: |
+          git pull --rebase origin main
+          python3 scripts/update-fnpack.py easytier "${{ steps.info.outputs.tag }}" "${{ github.repository }}"
+          git diff --quiet fnpack.json && echo "fnpack.json 无变更" && exit 0
+          git add fnpack.json
+          git commit -m "docs: 更新 EasyTier 版本信息到 fnpack.json"
+          git pull --rebase origin main
+          git push
