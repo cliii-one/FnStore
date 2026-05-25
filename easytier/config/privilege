@@ -1,4 +1,7 @@
 {
+    "defaults": {
+        "run-as": "package"
+    },
     "username": "easytier",
     "groupname": "easytier"
 }
