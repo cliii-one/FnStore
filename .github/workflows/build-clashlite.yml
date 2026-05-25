@@ -125,15 +125,15 @@ jobs:
           rm -rf "$TMP_DIR" metacubexd.zip
           echo "前端文件数量: $(ls app/server/public/ | wc -l)"
 
-      - name: 交叉编译 gateway-proxy（网关反向代理）
+      - name: 交叉编译 clashlite（网关反向代理）
         run: |
           cd app/server/proxy
           GOOS=linux GOARCH=${{ matrix.go_arch }} CGO_ENABLED=0 \
-            go build -ldflags="-s -w" -o ../gateway-proxy .
+            go build -ldflags="-s -w" -o ../clashlite .
           cd -
-          chmod +x app/server/gateway-proxy
-          file app/server/gateway-proxy
-          echo "gateway-proxy: $(du -h app/server/gateway-proxy | cut -f1)"
+          chmod +x app/server/clashlite
+          file app/server/clashlite
+          echo "clashlite: $(du -h app/server/clashlite | cut -f1)"
 
       - name: 更新 manifest
         run: |

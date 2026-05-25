@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net"
@@ -15,10 +16,10 @@ import (
 )
 
 const (
-	gatewayPrefix   = "/app/clashlite"
-	upstreamBaseURL = "http://127.0.0.1:9090"
-	socketFileName  = "clashlite.sock"
-	configJSPath    = "/ui/config.js"
+	gatewayPrefix    = "/app/clashlite"
+	mihomoSocketName = "mihomo.sock"
+	socketFileName   = "clashlite.sock"
+	configJSPath     = "/ui/config.js"
 )
 
 func main() {
@@ -28,12 +29,19 @@ func main() {
 	}
 	socketPath := appDest + "/" + socketFileName
 
-	upstreamURL, err := url.Parse(upstreamBaseURL)
-	if err != nil {
-		log.Fatalf("解析上游地址失败: %v", err)
+	// 通过 Unix Socket 连接 mihomo 上游，替代 TCP 127.0.0.1:9090
+	mihomoSocketPath := appDest + "/" + mihomoSocketName
+	upstreamTransport := &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			return net.DialTimeout("unix", mihomoSocketPath, 5*time.Second)
+		},
+		MaxIdleConns:          100,
+		IdleConnTimeout:       120 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
 	}
 
-	proxy := httputil.NewSingleHostReverseProxy(upstreamURL)
+	proxy := httputil.NewSingleHostReverseProxy(&url.URL{Scheme: "http", Host: "mihomo-unix"})
+	proxy.Transport = upstreamTransport
 	originalDirector := proxy.Director
 
 	proxy.Director = func(req *http.Request) {
@@ -46,7 +54,7 @@ func main() {
 			}
 		}
 
-		req.Host = upstreamURL.Host
+		req.Host = "mihomo-unix"
 	}
 
 	proxy.ModifyResponse = rewriteRedirectLocation
@@ -77,7 +85,7 @@ func main() {
 	}
 
 	log.Printf("Unix Socket 成功监听并赋权 0666: %s", socketPath)
-	log.Printf("网关前缀: %s -> 上游: %s", gatewayPrefix, upstreamBaseURL)
+	log.Printf("网关前缀: %s -> 上游 Unix Socket: %s", gatewayPrefix, mihomoSocketPath)
 
 	server := &http.Server{
 		Handler:           mux,

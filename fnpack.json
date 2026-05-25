@@ -105,8 +105,8 @@
       "x86",
       "arm"
     ],
-    "version": "2.0.0",
-    "desc": "基于 vernesong/mihomo 内核的代理管理面板，通过飞牛统一网关访问，无需暴露端口",
+    "version": "3.0.0",
+    "desc": "基于 vernesong/mihomo 内核的代理管理面板，Unix Socket 零端口通信，通过飞牛统一网关访问",
     "distributor": "cliii-one",
     "distributor_url": "https://github.com/cliii-one/FnDepot/tree/main/clashlite",
     "bug_report_url": "https://github.com/cliii-one/FnDepot/issues",
@@ -114,38 +114,13 @@
     "isdocker": "false",
     "size": "40",
     "install_type": "存储空间",
-    "changelog": "v2.0.0 采用飞牛统一网关反代模式，通过 Unix Socket 访问 UI，不再直接暴露 9090 端口",
+    "changelog": "v3.0.0 mihomo API 改为 Unix Socket 监听，零 TCP 端口暴露，网关代理二进制更名为 clashlite",
     "arch_diff": {
       "x86": {
-        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlite-v2.0.0/clashlite-X86.fpk"
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlite-v3.0.0/clashlite-X86.fpk"
       },
       "arm": {
-        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlite-v2.0.0/clashlite-ARM.fpk"
-      }
-    }
-  },
-  "clashlitepro": {
-    "display_name": "ClashLite Pro",
-    "platform": [
-      "x86",
-      "arm"
-    ],
-    "version": "1.0.0",
-    "desc": "基于 vernesong/mihomo 内核的代理管理面板 Pro 版，mihomo 原生 Unix Socket 监听，零 TCP 端口暴露",
-    "distributor": "cliii-one",
-    "distributor_url": "https://github.com/cliii-one/FnDepot/tree/main/clashlitepro",
-    "bug_report_url": "https://github.com/cliii-one/FnDepot/issues",
-    "labels": "工具,效率",
-    "isdocker": "false",
-    "size": "40",
-    "install_type": "存储空间",
-    "changelog": "v1.0.0 Pro 版首发：mihomo 原生 Unix Socket 监听，零 TCP 端口暴露",
-    "arch_diff": {
-      "x86": {
-        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlitepro-v1.0.0/clashlitepro-X86.fpk"
-      },
-      "arm": {
-        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlitepro-v1.0.0/clashlitepro-ARM.fpk"
+        "download_url": "https://github.com/cliii-one/FnDepot/releases/download/clashlite-v3.0.0/clashlite-ARM.fpk"
       }
     }
   },

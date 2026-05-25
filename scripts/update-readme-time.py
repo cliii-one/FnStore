@@ -4,7 +4,6 @@ import sys
 
 DISPLAY_NAMES = {
     "clashlite": "ClashLite",
-    "clashlitepro": "ClashLite Pro",
     "easytier": "EasyTier",
     "substore": "SubStore",
     "fnnas-notes": "fnnas-notes",

@@ -4,10 +4,11 @@ set -euo pipefail
 MIHOMO_BIN="${TRIM_PKGHOME}/mihomo/mihomo"
 MIHOMO_DIR="${TRIM_PKGHOME}/mihomo"
 MIHOMO_CONFIG="${MIHOMO_DIR}/config.yaml"
+MIHOMO_SOCKET="${TRIM_APPDEST}/mihomo.sock"
 PID_FILE="${TRIM_PKGVAR}/mihomo.pid"
-PROXY_PID_FILE="${TRIM_PKGVAR}/gateway-proxy.pid"
+PROXY_PID_FILE="${TRIM_PKGVAR}/clashlite.pid"
 LOG_FILE="${TRIM_PKGVAR}/info.log"
-GATEWAY_PROXY_BIN="${TRIM_APPDEST}/server/gateway-proxy"
+GATEWAY_PROXY_BIN="${TRIM_APPDEST}/server/clashlite"
 
 log_msg() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
@@ -28,8 +29,21 @@ ensure_config() {
             cp "${template}" "${MIHOMO_CONFIG}"
             sed -i "s/MB_SECRET/yyds666/g" "${MIHOMO_CONFIG}"
             sed -i "s|AIRPORT_URL1|https://example.com/subscribe?token=YOUR_TOKEN_HERE|g" "${MIHOMO_CONFIG}"
-            sed -i "s|AIRPORT_URL2|https://example.com/subscribe?token=YOUR_TOKEN_HERE|g" "${MIHOMO_CONFIG}"
             log_msg "Config created from template: ${MIHOMO_CONFIG}"
+        fi
+    fi
+    if [ -f "${MIHOMO_CONFIG}" ]; then
+        if grep -q "MIHOMO_UNIX_SOCKET" "${MIHOMO_CONFIG}"; then
+            sed -i "s|MIHOMO_UNIX_SOCKET|${MIHOMO_SOCKET}|g" "${MIHOMO_CONFIG}"
+            log_msg "已设置 external-controller-unix: ${MIHOMO_SOCKET}"
+        fi
+        if ! grep -q "external-controller-unix" "${MIHOMO_CONFIG}"; then
+            sed -i "/^external-controller:/a external-controller-unix: ${MIHOMO_SOCKET}" "${MIHOMO_CONFIG}"
+            log_msg "已追加 external-controller-unix: ${MIHOMO_SOCKET}"
+        fi
+        if grep -q "^external-controller:" "${MIHOMO_CONFIG}"; then
+            sed -i "/^external-controller:/d" "${MIHOMO_CONFIG}"
+            log_msg "已删除旧的 external-controller（TCP 端口），改用 Unix Socket"
         fi
     fi
 }
@@ -38,10 +52,10 @@ copy_bundled() {
     local bundled_dir="${TRIM_APPDEST}/server/data/mihomo"
     if [ -d "${bundled_dir}" ]; then
         mkdir -p "${MIHOMO_DIR}"
-        for f in mihomo Model.bin geoip.metadb geosite.dat ASN.mmdb; do
+        cp -f "${bundled_dir}/mihomo" "${MIHOMO_DIR}/mihomo" 2>/dev/null && chmod +x "${MIHOMO_DIR}/mihomo"
+        for f in Model.bin geoip.metadb geosite.dat ASN.mmdb; do
             if [ -f "${bundled_dir}/${f}" ] && [ ! -f "${MIHOMO_DIR}/${f}" ]; then
                 cp "${bundled_dir}/${f}" "${MIHOMO_DIR}/${f}"
-                [ "${f}" = "mihomo" ] && chmod +x "${MIHOMO_DIR}/${f}"
             fi
         done
     fi
@@ -72,7 +86,8 @@ start_mihomo() {
         exit 1
     fi
 
-    log_msg "Starting mihomo ..."
+    rm -f "${MIHOMO_SOCKET}"
+    log_msg "Starting mihomo (with external-controller-unix: ${MIHOMO_SOCKET}) ..."
 
     local args=(-d "${MIHOMO_DIR}")
     if [ "${MIHOMO_CONFIG}" != "${MIHOMO_DIR}/config.yaml" ]; then
@@ -85,15 +100,15 @@ start_mihomo() {
     log_msg "mihomo started with PID ${pid}"
 
     local count=0
-    while [ ${count} -lt 10 ]; do
-        if curl -s http://127.0.0.1:9090 > /dev/null 2>&1; then
-            log_msg "mihomo API 已就绪"
+    while [ ${count} -lt 15 ]; do
+        if [ -S "${MIHOMO_SOCKET}" ]; then
+            log_msg "mihomo Unix Socket 已就绪: ${MIHOMO_SOCKET}"
             return 0
         fi
         sleep 1
         count=$((count + 1))
     done
-    log_msg "WARNING: mihomo API 未在 10 秒内就绪，继续启动网关代理"
+    log_msg "WARNING: mihomo Unix Socket 未在 15 秒内就绪，继续启动网关代理"
     return 0
 }
 
@@ -103,30 +118,30 @@ start_gateway_proxy() {
     fi
 
     if [ ! -x "${GATEWAY_PROXY_BIN}" ]; then
-        log_msg "ERROR: gateway-proxy binary not found at ${GATEWAY_PROXY_BIN}"
+        log_msg "ERROR: clashlite binary not found at ${GATEWAY_PROXY_BIN}"
         echo "【启动异常】未找到网关反向代理程序。" > "${TRIM_TEMP_LOGFILE}"
         echo "请尝试在飞牛应用中心卸载后重新安装此应用。" >> "${TRIM_TEMP_LOGFILE}"
         exit 1
     fi
 
-    log_msg "Starting gateway-proxy ..."
+    log_msg "Starting clashlite gateway-proxy ..."
 
     "${GATEWAY_PROXY_BIN}" >> "${LOG_FILE}" 2>&1 &
     local pid=$!
     printf "%s" "${pid}" > "${PROXY_PID_FILE}"
-    log_msg "gateway-proxy started with PID ${pid}"
+    log_msg "clashlite started with PID ${pid}"
 
     local socket_path="${TRIM_APPDEST}/clashlite.sock"
     local count=0
     while [ ${count} -lt 5 ]; do
         if [ -S "${socket_path}" ]; then
-            log_msg "gateway-proxy Unix Socket 已就绪: ${socket_path}"
+            log_msg "clashlite Unix Socket 已就绪: ${socket_path}"
             return 0
         fi
         sleep 1
         count=$((count + 1))
     done
-    log_msg "WARNING: gateway-proxy Socket 未在 5 秒内就绪"
+    log_msg "WARNING: clashlite Socket 未在 5 秒内就绪"
     return 0
 }
 
@@ -167,18 +182,19 @@ stop_mihomo() {
             kill -KILL ${mihomo_pid} 2>/dev/null || true
         fi
     fi
+    rm -f "${MIHOMO_SOCKET}"
     return 0
 }
 
 stop_gateway_proxy() {
-    log_msg "Stopping gateway-proxy ..."
+    log_msg "Stopping clashlite ..."
 
     if [ -r "${PROXY_PID_FILE}" ]; then
         local pid
         pid=$(head -n 1 "${PROXY_PID_FILE}" | tr -d '[:space:]')
 
         if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
-            log_msg "Sending TERM to gateway-proxy PID:${pid}"
+            log_msg "Sending TERM to clashlite PID:${pid}"
             kill -TERM "${pid}" 2>/dev/null || true
 
             local count=0
@@ -195,7 +211,7 @@ stop_gateway_proxy() {
     fi
 
     local proxy_pid
-    proxy_pid=$(pgrep -f "gateway-proxy" 2>/dev/null) || true
+    proxy_pid=$(pgrep -f "${GATEWAY_PROXY_BIN}" 2>/dev/null) || true
     if [ -n "${proxy_pid}" ]; then
         kill -TERM ${proxy_pid} 2>/dev/null || true
         sleep 1
