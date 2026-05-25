@@ -49,7 +49,7 @@ jobs:
       - name: 确定版本号
         id: version
         run: |
-          MANIFEST_VER=$(grep '^version' manifest | awk -F'=' '{print $2}' | tr -d ' ')
+          MANIFEST_VER=$(grep '^version' manifest | awk -F'=' '{print $2}' | tr -d ' "')
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
           elif [[ "${{ github.ref }}" == refs/tags/easytier-v* ]]; then
@@ -163,7 +163,7 @@ jobs:
       - name: 确定构建信息
         id: info
         run: |
-          MANIFEST_VER=$(grep '^version' easytier/manifest | awk -F'=' '{print $2}' | tr -d ' ')
+          MANIFEST_VER=$(grep '^version' easytier/manifest | awk -F'=' '{print $2}' | tr -d ' "')
           if [[ "${{ github.ref }}" == refs/tags/easytier-v* ]]; then
             TAG="${{ github.ref_name }}" && VERSION="${TAG#easytier-v}"
           elif [ -n "${{ github.event.inputs.version }}" ]; then
