@@ -227,12 +227,12 @@ jobs:
 
             基于 vernesong/mihomo (Alpha-Smart) 内核的飞牛 fnOS 代理管理应用，集成 metacubexd 管理面板。
 
-            ### 🆕 v2.0.0 网关版特性
+            ### 🆕 v3.0.0 Unix Socket 版特性
 
-            - ✅ 通过飞牛统一网关访问 UI，无需暴露 9090 端口
-            - ✅ 使用 Unix Domain Socket 反向代理，更安全更便捷
-            - ✅ mihomo API 仅监听 127.0.0.1，不对外暴露
+            - ✅ 通过飞牛统一网关访问 UI，零 TCP 端口暴露
+            - ✅ mihomo API 监听 Unix Socket，不走 TCP 端口，更安全更高效
             - ✅ metacubexd 自动配置后端地址，无需手动输入
+            - ✅ 单配置方案 OneSmart，开箱即用
 
             ### 📦 下载
 

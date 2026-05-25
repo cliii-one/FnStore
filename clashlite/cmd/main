@@ -124,7 +124,7 @@ start_gateway_proxy() {
         exit 1
     fi
 
-    log_msg "Starting clashlite gateway-proxy ..."
+    log_msg "Starting clashlite ..."
 
     "${GATEWAY_PROXY_BIN}" >> "${LOG_FILE}" 2>&1 &
     local pid=$!
