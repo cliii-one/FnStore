@@ -3,7 +3,7 @@
     "easytier.Main": {
       "title": "EasyTier",
       "icon": "images/icon_{0}.png",
-      "type": "iframe",
+      "type": "url",
       "protocol": "",
       "port": "11211",
       "url": "/",
