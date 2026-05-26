@@ -10,73 +10,81 @@ log_msg() {
     echo "$(date '+%Y-%m-%d %H:%M:%S') - $1" >> "${LOG_FILE}"
 }
 
-# 将打包的二进制复制到可写目录，并赋予执行权限
+# 从安装目录复制二进制到可写目录（已存在且可执行则跳过）
 copy_bundled() {
     local bundled_dir="${TRIM_APPDEST}/server/data/easytier"
-    if [ -d "${bundled_dir}" ]; then
-        mkdir -p "${EASYTIER_DIR}"
-        for f in easytier-core easytier-web-embed easytier-cli; do
-            if [ -f "${bundled_dir}/${f}" ]; then
-                cp -f "${bundled_dir}/${f}" "${EASYTIER_DIR}/${f}" 2>/dev/null && chmod +x "${EASYTIER_DIR}/${f}"
-            fi
-        done
-    fi
+    [ ! -d "${bundled_dir}" ] && return 0
+    mkdir -p "${EASYTIER_DIR}"
+    for f in easytier-core easytier-web-embed easytier-cli; do
+        [ -x "${EASYTIER_DIR}/${f}" ] && continue
+        [ -f "${bundled_dir}/${f}" ] && cp -f "${bundled_dir}/${f}" "${EASYTIER_DIR}/${f}" && chmod +x "${EASYTIER_DIR}/${f}"
+    done
 }
 
-# 启动 easytier-core，仅开启配置服务端口，不传任何网络参数
-# 用户通过 Web 前端自行配置网络
-start_core() {
-    if check_core_status; then
+# 等待进程启动，超时返回 1
+wait_for_pid() {
+    local pid=$1 timeout=${2:-5}
+    local count=0
+    while [ ${count} -lt ${timeout} ]; do
+        kill -0 "${pid}" 2>/dev/null && return 0
+        sleep 1
+        count=$((count + 1))
+    done
+    return 1
+}
+
+# 通过 PID 文件停止进程，失败则用 pgrep 兜底
+stop_by_pid_file() {
+    local pid_file=$1 pattern=$2
+    if [ -r "${pid_file}" ]; then
+        local pid
+        pid=$(head -n 1 "${pid_file}" | tr -d '[:space:]')
+        if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
+            kill -TERM "${pid}" 2>/dev/null || true
+            local count=0
+            while kill -0 "${pid}" 2>/dev/null && [ ${count} -lt 10 ]; do
+                sleep 1
+                count=$((count + 1))
+            done
+            kill -0 "${pid}" 2>/dev/null && kill -KILL "${pid}" 2>/dev/null || true
+        fi
+        rm -f "${pid_file}"
         return 0
     fi
+    # PID 文件不存在时用 pgrep 兜底
+    local pids
+    pids=$(pgrep -f "${pattern}" 2>/dev/null) || true
+    [ -n "${pids}" ] && kill -TERM ${pids} 2>/dev/null || true
+}
+
+start_core() {
+    check_core_status && return 0
 
     copy_bundled
 
     if [ ! -x "${EASYTIER_DIR}/easytier-core" ]; then
-        log_msg "ERROR: easytier-core binary not found"
         echo "【启动异常】未找到 EasyTier 核心程序文件。" > "${TRIM_TEMP_LOGFILE}"
         echo "请尝试在飞牛应用中心卸载后重新安装此应用。" >> "${TRIM_TEMP_LOGFILE}"
         exit 1
     fi
 
-    # 仅开启配置服务端口，等待 Web 前端下发配置
-    local args=()
-    args+=("-w" "udp://127.0.0.1:22020/admin")
-
-    log_msg "Starting easytier-core with args: ${args[*]}"
-
     export ET_STATE_DIR="${TRIM_PKGVAR}"
     cd "${TRIM_PKGVAR}"
-    "${EASYTIER_DIR}/easytier-core" "${args[@]}" >> "${LOG_FILE}" 2>&1 &
-    local pid=$!
-    printf "%s" "${pid}" > "${CORE_PID_FILE}"
-    log_msg "easytier-core started with PID ${pid}"
+    "${EASYTIER_DIR}/easytier-core" -w "udp://127.0.0.1:22020/admin" >> "${LOG_FILE}" 2>&1 &
+    printf "%s" "$!" > "${CORE_PID_FILE}"
 
-    local count=0
-    while [ ${count} -lt 10 ]; do
-        if kill -0 "${pid}" 2>/dev/null; then
-            log_msg "easytier-core is running"
-            return 0
-        fi
-        sleep 1
-        count=$((count + 1))
-    done
-    log_msg "WARNING: easytier-core may not have started properly"
-    return 0
+    if ! wait_for_pid "$!" 10; then
+        log_msg "WARNING: easytier-core may not have started properly"
+    fi
 }
 
-# 启动 easytier-web-embed Web 控制台
 start_web() {
-    if check_web_status; then
-        return 0
-    fi
+    check_web_status && return 0
 
     if [ ! -x "${EASYTIER_DIR}/easytier-web-embed" ]; then
         log_msg "WARNING: easytier-web-embed not found, skipping web console"
         return 0
     fi
-
-    log_msg "Starting easytier-web-embed ..."
 
     export ET_STATE_DIR="${TRIM_PKGVAR}"
     export ET_WEB_DB="${TRIM_PKGVAR}/et.db"
@@ -87,77 +95,11 @@ start_web() {
         --config-server-port 22020 \
         --config-server-protocol udp \
         >> "${LOG_FILE}" 2>&1 &
-    local pid=$!
-    printf "%s" "${pid}" > "${WEB_PID_FILE}"
-    log_msg "easytier-web-embed started with PID ${pid}"
+    printf "%s" "$!" > "${WEB_PID_FILE}"
 
-    local count=0
-    while [ ${count} -lt 5 ]; do
-        if kill -0 "${pid}" 2>/dev/null; then
-            log_msg "easytier-web-embed is running"
-            return 0
-        fi
-        sleep 1
-        count=$((count + 1))
-    done
-    log_msg "WARNING: easytier-web-embed may not have started properly"
-    return 0
-}
-
-stop_core() {
-    log_msg "Stopping easytier-core ..."
-    if [ -r "${CORE_PID_FILE}" ]; then
-        local pid
-        pid=$(head -n 1 "${CORE_PID_FILE}" | tr -d '[:space:]')
-        if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
-            kill -TERM "${pid}" 2>/dev/null || true
-            local count=0
-            while kill -0 "${pid}" 2>/dev/null && [ ${count} -lt 10 ]; do
-                sleep 1
-                count=$((count + 1))
-            done
-            if kill -0 "${pid}" 2>/dev/null; then
-                kill -KILL "${pid}" 2>/dev/null || true
-            fi
-        fi
-        rm -f "${CORE_PID_FILE}"
+    if ! wait_for_pid "$!" 5; then
+        log_msg "WARNING: easytier-web-embed may not have started properly"
     fi
-
-    local core_pid
-    core_pid=$(pgrep -f "easytier-core" 2>/dev/null) || true
-    if [ -n "${core_pid}" ]; then
-        kill -TERM ${core_pid} 2>/dev/null || true
-        sleep 2
-    fi
-    return 0
-}
-
-stop_web() {
-    log_msg "Stopping easytier-web-embed ..."
-    if [ -r "${WEB_PID_FILE}" ]; then
-        local pid
-        pid=$(head -n 1 "${WEB_PID_FILE}" | tr -d '[:space:]')
-        if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
-            kill -TERM "${pid}" 2>/dev/null || true
-            local count=0
-            while kill -0 "${pid}" 2>/dev/null && [ ${count} -lt 5 ]; do
-                sleep 1
-                count=$((count + 1))
-            done
-            if kill -0 "${pid}" 2>/dev/null; then
-                kill -KILL "${pid}" 2>/dev/null || true
-            fi
-        fi
-        rm -f "${WEB_PID_FILE}"
-    fi
-
-    local web_pid
-    web_pid=$(pgrep -f "easytier-web-embed" 2>/dev/null) || true
-    if [ -n "${web_pid}" ]; then
-        kill -TERM ${web_pid} 2>/dev/null || true
-        sleep 1
-    fi
-    return 0
 }
 
 check_core_status() {
@@ -166,9 +108,8 @@ check_core_status() {
         pid=$(head -n 1 "${CORE_PID_FILE}" | tr -d '[:space:]')
         if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
             return 0
-        else
-            rm -f "${CORE_PID_FILE}"
         fi
+        rm -f "${CORE_PID_FILE}"
     fi
     return 1
 }
@@ -179,9 +120,8 @@ check_web_status() {
         pid=$(head -n 1 "${WEB_PID_FILE}" | tr -d '[:space:]')
         if [ -n "${pid}" ] && kill -0 "${pid}" 2>/dev/null; then
             return 0
-        else
-            rm -f "${WEB_PID_FILE}"
         fi
+        rm -f "${WEB_PID_FILE}"
     fi
     return 1
 }
@@ -193,15 +133,11 @@ start)
     start_web
     ;;
 stop)
-    stop_web
-    stop_core
+    stop_by_pid_file "${WEB_PID_FILE}" "easytier-web-embed"
+    stop_by_pid_file "${CORE_PID_FILE}" "easytier-core"
     ;;
 status)
-    if check_core_status; then
-        exit 0
-    else
-        exit 3
-    fi
+    check_core_status && exit 0 || exit 3
     ;;
 *)
     echo "Usage: $0 {start|stop|status}" >&2

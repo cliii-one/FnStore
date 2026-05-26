@@ -1,7 +1,7 @@
 appname               = easytier
 version               = 1.0.0
 display_name          = EasyTier
-desc                  = "基于 EasyTier 的去中心化 VPN 组网工具，支持 Web 控制台管理，P2P 打洞，零配置组网"
+desc                  = "基于 EasyTier 的去中心化 VPN 组网工具，支持 Web 控制台管理，P2P 打洞，零配置组网。初始账号密码均为 admin"
 platform              = all
 source                = thirdparty
 maintainer            = EasyTier
