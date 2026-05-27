@@ -71,7 +71,7 @@ start_core() {
     # -w: 开启配置服务端口，等待 Web 前端下发配置
     # --machine-id: 固定机器标识，确保 Web 控制台重连后能恢复配置
     cd "${TRIM_PKGVAR}"
-    "${EASYTIER_DIR}/easytier-core" \
+    exec -a "EasyTier-Core" "${EASYTIER_DIR}/easytier-core" \
         --no-tun \
         -w "udp://127.0.0.1:22020/admin" \
         --machine-id "${TRIM_SYS_MACHINE_ID}" \
@@ -93,7 +93,7 @@ start_web() {
 
     export ET_WEB_DB="${TRIM_PKGVAR}/et.db"
     cd "${TRIM_PKGVAR}"
-    "${EASYTIER_DIR}/easytier-web-embed" \
+    exec -a "EasyTier-Web" "${EASYTIER_DIR}/easytier-web-embed" \
         --db "${TRIM_PKGVAR}/et.db" \
         --api-server-port 11211 \
         --config-server-port 22020 \

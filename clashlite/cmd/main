@@ -72,7 +72,7 @@ start_mihomo() {
     local args=(-d "${MIHOMO_DIR}")
     [ "${MIHOMO_CONFIG}" != "${MIHOMO_DIR}/config.yaml" ] && args+=(-f "${MIHOMO_CONFIG}")
 
-    "${MIHOMO_BIN}" "${args[@]}" >> "${LOG_FILE}" 2>&1 &
+    exec -a "ClashLite" "${MIHOMO_BIN}" "${args[@]}" >> "${LOG_FILE}" 2>&1 &
     echo $! > "${MIHOMO_PID}"
     log_msg "mihomo started with PID $(cat "${MIHOMO_PID}")"
 
